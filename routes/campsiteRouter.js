@@ -170,11 +170,16 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
     Campsite.findById(req.params.campsiteId)
     .then(campsite => {
         if (campsite && campsite.comments.id(req.params.commentId)){
+            if (campsite.comments.id(req.params.commentId).author._id.equals( req.user._id)){
+
             if (req.body.rating){
                 campsite.comments.id(req.params.commentId).rating = req.body.rating;
             }
             if (req.body.text){
                 campsite.comments.id(req.params.commentId).text = req.body.text;
+                }
+            } else {
+                err => next(err)
             }
             campsite.save()
             .then(campsite => {
