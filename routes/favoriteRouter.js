@@ -1,0 +1,71 @@
+const express = require('express')
+const bodyParser = require('body-parser')
+const Favorite = require('../models/favorite');
+
+const favoriteRouter = express.Router();
+const authenticate = require('../authenticate');
+const cors = require('./cors');
+const { response } = require('../app');
+
+favoriteRouter.use(bodyParser.json())
+
+favoriteRouter.route('/')
+.options(cors.corsWithOptions,authenticate.verifyUser,(req, res) => res.sendStatus(200))
+.get(cors.cors, authenticate.verifyUser, (req, res, next) => {
+    Favorite.findOne({user: req.user._id})
+    .populate('user')
+    .populate('campsites')
+    .then(favorite => {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.json(favorite)
+    }).catch(err => next(err))
+})
+.post(cors.corsWithOptions,authenticate.verifyUser,(req,res,next) => {
+    Favorite.findOne({user: req.user._id})
+    .then(favorite => {
+            if (favorite) {
+                for (let i =0; i < req.body.length; i ++){
+                    if (favorite.campsites.indexOf(req.body[i]._id) === -1){
+                        favorite.campsites.push(req.body[i]._id)
+                    }
+                }
+                favorite.save()
+                .then(favorite => {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.json({status:'added campsite to favorites', favorite: favorite})
+                })
+                .catch(err => next(err))
+            } else {
+                Favorite.create({ campsites: req.body, user: req.user._id})
+                .then(response => {
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json({status: 'added campsite to favorites', favorite: response})
+                    }
+                ).catch(err => next(err))
+            }
+        }
+    )
+    }
+)
+.put(cors.corsWithOptions,authenticate.verifyUser,(req, res) => {
+    res.statusCode = 403;
+    res.end('Put operation not supported on /favorites')
+})
+.delete(cors.corsWithOptions,authenticate.verifyUser, (req,res,next) => {
+    Favorite.findOneAndDelete({user: req.user._id})
+    .then(response => {
+        if (response){
+        res.statusCode = 200;
+        res.send('Deleted your favorite campsites!')
+        } else {
+            res.statusCode = 200;
+            res.send('You do not have any favorite campsites to be deleted!')
+        }
+    })
+    .catch(err => next(err))
+});
+
+module.exports = favoriteRouter;
