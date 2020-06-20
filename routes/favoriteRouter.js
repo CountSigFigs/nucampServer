@@ -105,5 +105,25 @@ favoriteRouter.route('/:campsiteId')
         }
     }).catch(err => next(err))
 })
+.put(cors.corsWithOptions,authenticate.verifyUser,(req, res) => {
+    res.statusCode = 403;
+    res.end('Put operation not supported on /favorites')
+})
+.delete(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) =>{
+    Favorite.findOne({user: req.user._id})
+    .then(response => {
+        if (response) {
+            let filteredList = response.campsites.filter(campsite => campsite != req.params.campsiteId)
+            response.campsites = filteredList
+            response.save()
+            res.statusCode = 200;
+            res.send(`Deleted campsite ${req.params.campsiteId} from your favorites!`)
+        } else {
+            res.statusCode = 401;
+            res.send('User not found. Make sure you are logged in')
+        }
+    }).catch(err => next(err))
+    }
+)
 
 module.exports = favoriteRouter;
